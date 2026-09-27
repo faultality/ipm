@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FN3204 Portfolio Manager Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.1); }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+        .dialogue-box { background: rgba(15, 23, 42, 0.6); border-left: 3px solid #3b82f6; padding: 12px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+        
+        .avatar-img { 
+            width: 48px; height: 48px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.15); 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); display: flex; align-items: center; justify-content: center;
+            color: #ffffff; font-weight: 700; font-size: 18px; text-transform: uppercase; flex-shrink: 0;
+        }
+        .avatar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .avatar-name { font-size: 15px; font-weight: 700; color: #60a5fa; }
+
+        .email-frame { background: #0c1222; border: 1px solid #334155; border-radius: 10px; overflow: hidden; margin: 12px 0; }
+        .email-header { background: #1a2332; padding: 12px 16px; border-bottom: 1px solid #334155; font-size: 13px; }
+        .email-header div { margin-bottom: 4px; }
+        .email-header .label { color: #64748b; display: inline-block; width: 60px; }
+        .email-header .value { color: #cbd5e1; }
+        .email-body { padding: 16px; font-size: 14px; line-height: 1.7; color: #cbd5e1; }
+        .attachment-box { background: #1e293b; border: 1px dashed #475569; border-radius: 8px; padding: 10px 14px; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+        .attachment-box:hover { background: #334155; border-color: #3b82f6; }
+        .att-icon { font-size: 20px; }
+        .att-name { font-weight: 600; color: #e2e8f0; font-size: 13px; }
+        .att-size { color: #64748b; font-size: 12px; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 100; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: #1e293b; border: 1px solid #3b82f6; border-radius: 12px; padding: 24px; max-width: 650px; width: 90%; box-shadow: 0 0 30px rgba(59, 130, 246, 0.2); max-height: 85vh; overflow-y: auto; }
+        
+        @keyframes fallIn {
+            0% { transform: translateY(-100vh) rotate(-10deg) scale(0.8); opacity: 0; }
+            60% { transform: translateY(20px) rotate(2deg) scale(1.05); opacity: 1; }
+            80% { transform: translateY(-10px) rotate(-1deg) scale(0.98); }
+            100% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+        }
+        @keyframes shine { 0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); } 100% { transform: translateX(100%) translateY(100%) rotate(45deg); } }
+        .falling-document {
+            animation: fallIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); color: #0f172a;
+            border: 3px solid #3b82f6; border-radius: 12px; padding: 2.5rem 2rem; text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7), 0 0 30px rgba(59,130,246,0.3);
+            max-width: 420px; margin: 2rem auto; position: relative; overflow: hidden;
+        }
+        .falling-document::before { content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%; background:linear-gradient(45deg,transparent,rgba(255,255,255,0.6),transparent); transform:rotate(45deg); animation:shine 3s infinite; }
+        .falling-document h2 { font-size:3rem; font-weight:900; color:#1e3a8a; margin-bottom:0.5rem; letter-spacing:-0.05em; text-transform:uppercase; position:relative; z-index:1; }
+        .falling-document p { font-size:1.1rem; color:#475569; font-style:italic; font-weight:500; position:relative; z-index:1; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <header class="bg-slate-900 border-b border-slate-700 p-4 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-xl">FN</div>
+                <div>
+                    <h1 class="font-bold text-lg text-white">FN3204 Portfolio Manager Simulator</h1>
+                    <p class="text-xs text-slate-400">ICEF • Investments & Portfolio Management</p>
+                </div>
+            </div>
+            <div class="flex gap-6 text-sm mono">
+                <div>GRADE: <span id="score-display" class="text-green-400 font-bold">0</span>%</div>
+                <div>PROGRESS: <span id="progress-display" class="text-blue-400 font-bold">0/30</span></div>
+            </div>
+        </div>
+    </header>
+    <main class="flex-grow max-w-5xl mx-auto w-full p-6 space-y-6">
+        <div id="scene-container" class="glass-panel rounded-xl p-8 fade-in min-h-[400px] flex flex-col justify-between"></div>
+        <div id="action-container" class="glass-panel rounded-xl p-6 fade-in"></div>
+    </main>
+    
+    <div id="theory-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-blue-400 mb-4 flex items-center gap-2">📚 <span id="modal-title"></span></h3>
+            <div id="modal-text" class="text-slate-300 leading-relaxed mb-6 text-sm"></div>
+            <button onclick="closeModal()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded transition">Understood</button>
+        </div>
+    </div>
+
+    <div id="attachment-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                <h3 id="att-modal-title" class="text-lg font-bold text-blue-400 flex items-center gap-2">📎 <span>Attachment</span></h3>
+                <button onclick="closeAttachment()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            <div id="att-modal-body" class="chart-container" style="height: 350px;">
+                <canvas id="modalChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+
+<script>
+const CONFIG = {
+    formActionUrl: "https://docs.google.com/forms/d/e/1FAIpQLSfeiQ0ky16nkDXSOqZjqRIUrU7ZFglMCIPjQ1u7g5IgUUUG2Q/formResponse",
+    entryName: "entry.1188796955", entryMark: "entry.48350592"
+};
+const state = { sceneIndex:0, correctCount:0, totalQuizzes:30, studentName:'', playerEmail:'', capital:10000000, benchmarkCapital:10000000, reputation:60, alloc:{tb:20,mkt:50,val:0,small:0,bond:20,feq:10,feqh:0}, quarter:0, eventScen:{}, triggeredSituational:{}, activeEventQuarters:[2,3,4], sitThresholds:{closetTilt:5,marginBeta:1.3,marginCapital:9000000} };
+const ASSETS = { tb:{name:'T-bills',emoji:''}, mkt:{name:'Market Index',emoji:'📈'}, val:{name:'Value Tilt (HML)',emoji:''}, small:{name:'Small-cap (SMB)',emoji:'🌱'}, bond:{name:'Long Gov Bonds',emoji:''}, feq:{name:'Foreign Eq (Unhedged)',emoji:'🌍'}, feqh:{name:'Foreign Eq (Hedged)',emoji:'️'} };
+const KEYS = Object.keys(ASSETS);
+const AP = { tb:{beta:0,s:0,h:0,dur:0,fx:0,cou:0}, mkt:{beta:1,s:0,h:0,dur:0,fx:0,cou:0}, val:{beta:1,s:0,h:1,dur:0,fx:0,cou:0}, small:{beta:1,s:1,h:0,dur:0,fx:0,cou:0}, bond:{beta:0,s:0,h:0,dur:7.5,fx:0,cou:1.2}, feq:{beta:0.7,s:0,h:0,dur:0,fx:1,cou:0}, feqh:{beta:0.7,s:0,h:0,dur:0,fx:0,cou:0,fp:1} };
+// Illustrative "benchmark" weights used only to compute the Active Share / Tracking Error proxy shown on the risk dashboard
+const BENCH = { tb:10, mkt:60, val:0, small:0, bond:20, feq:10, feqh:0 };
+const SCEN = { 1:{label:'Q1: Recession',rfq:1,mkt:-5,smb:-1.5,hml:1.2,dy:0.2,fx:-2.5,fp:0.4}, 2:{label:'Q2: Early Recovery',rfq:1,mkt:4,smb:0.5,hml:-0.8,dy:-0.3,fx:1.5,fp:0.4}, 3:{label:'Q3: Expansion',rfq:1,mkt:2.5,smb:0.5,hml:1.8,dy:-0.6,fx:0.5,fp:0.4}, 4:{label:'Q4: Late Cycle',rfq:1,mkt:4.5,smb:-1,hml:-0.5,dy:0.3,fx:-2,fp:0.4} };
+
+// --- Systemic (macro/market) events: "weather on the market", one per rebalance from Q2 onward ---
+const SYS_EVENTS = {
+    1: { title:"Hardware/Rates Shock", narrative:"*Even before your first rebalance, a shock hits.* A surprise spike in short-term funding costs ripples through the repo market right as the recession bites. Everyone is repricing risk at once.", choices:[
+        { label:"De-risk early — brace the portfolio for further downside", apply:(s)=>{ s.mkt-=1; s.dy+=0.2; } },
+        { label:"Hold steady — treat it as short-lived noise", apply:(s)=>{ s.smb-=1; s.hml+=0.5; } }
+    ]},
+    2: { title:"Yield Curve Inversion", narrative:"*A red alert flashes across the Bloomberg terminal.* The yield curve has inverted. Recession fears spike and the market panics ahead of your Q2 rebalance. Long government bonds are suddenly the trade everyone wants.", choices:[
+        { label:"Increase Duration — rotate into the flight-to-quality bond rally", apply:(s)=>{ s.mkt-=1.5; s.dy-=0.4; } },
+        { label:"Stay in Risk — hold your equity exposure and chase the rebound", apply:(s)=>{ s.mkt+=2; s.smb-=1.5; } }
+    ]},
+    3: { title:"Factor Crowding", narrative:"*Research flags a warning.* Too many funds have piled into the same Value (HML) and Small-cap (SMB) trades. A sudden, violent factor unwind is underway — echoes of the 2019 quant crash.", choices:[
+        { label:"Cut Factor Tilts — de-risk HML/SMB ahead of the rebalance", apply:(s)=>{ s.hml-=0.5; s.smb-=0.5; } },
+        { label:"Double Down — buy the factor dip and hope it snaps back", apply:(s)=>{ s.hml-=3.5; s.smb-=3.5; } }
+    ]},
+    4: { title:"Liquidity Crunch", narrative:"*Screens turn red.* A shock hits global markets. Bid-ask spreads blow out as market makers pull liquidity, hitting unhedged foreign equity and small-cap names hardest.", choices:[
+        { label:"Flee to Cash / T-bills — preserve capital through the panic", apply:(s)=>{ s.fx+=1.5; s.rfq+=0.2; } },
+        { label:"Pay for FX Hedging — protect foreign exposure at a cost", apply:(s)=>{ s.fp+=0.4; s.fx-=1.5; } }
+    ]}
+};
+
+// --- Situational (triggered) events: fire only if the player's own allocation choices meet a condition ---
+const SIT_EVENTS = {
+    closet:{ title:"Client Call: Eleanor Vance", narrative:"*Eleanor's voice is icy on the line.* \"I've been looking at your factor tilts. They're practically zero. I'm paying an active management fee for a portfolio that hugs the benchmark. This looks like closet indexing to me.\"", choices:[
+        { label:"Apologize and lower our fee as a goodwill gesture", apply:()=>{ state.capital*=0.97; state.reputation=Math.max(0,state.reputation-5); } },
+        { label:"Promise to raise Active Share materially next quarter", apply:()=>{ state.capital*=0.995; state.reputation=Math.max(0,state.reputation-2); } }
+    ]},
+    margin:{ title:"Prime Broker: Margin Call", narrative:"*An urgent email from the prime broker.* Your portfolio's beta has climbed above 1.3 while capital is down. The broker's risk model wants additional collateral — now.", choices:[
+        { label:"Sell into strength — trim your best-performing positions", apply:()=>{ state.capital*=0.995; state.reputation=Math.max(0,state.reputation-4); } },
+        { label:"Post additional capital to meet the call", apply:()=>{ state.capital*=0.98; state.reputation=Math.min(100,state.reputation+1); } }
+    ]}
+};
+
+const TN = {
+    mpt: { title: "Modern Portfolio Theory & Constraints", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 2; Bodie, Kane & Marcus (2023), Chapters 6-7.<br><br>Construct an efficient portfolio. Weights must sum to exactly 100%. Factor tilts (Value, Small-cap) are constrained to <b>±15%</b> to prevent uncompensated idiosyncratic risk and excessive tracking error. Diversification eliminates firm-specific risk, but systematic risk remains." },
+    tilts: { title: "Factor Tilts & Tracking Error", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 4 (Multifactor Models); Bodie, Kane & Marcus (2023), Chapter 10.<br><br>A 'tilt' is an intentional overweight/underweight relative to a benchmark to capture a risk premium (e.g., SMB, HML). Unconstrained tilts lead to massive tracking error. Industry practice bounds active weights." },
+    duration: { title: "Duration & Yield Curve", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 8 (Fixed Income Portfolio Management).<br><br>Duration measures interest rate sensitivity. In expansion with rising yields, long-duration bonds suffer capital losses. Shortening duration protects against parallel upward shifts in the yield curve." },
+    active: { title: "Active Share & Late-Cycle Positioning", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 9 (Active Portfolio Management); Bodie, Kane & Marcus (2023), Chapter 27.<br><br>Active Share measures the percentage differing from the benchmark. High Active Share + High Tracking Error = High Conviction. Avoid 'closet indexing'." },
+    timing: { title: "Market Timing Models (Treynor-Mazuy)", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 9; Bodie, Kane & Marcus (2023), Chapter 24.<br><br>The Treynor-Mazuy model tests market timing by adding a squared market excess return term: $R_p - R_f = \\alpha + b(R_M - R_f) + c(R_M - R_f)^2 + e$. A statistically significant positive 'c' indicates successful market timing (convex payoff), as the manager increases beta in up markets and decreases it in down markets." },
+    mayers: { title: "Mayers (1972) CAPM Extension", text: "<b>Source:</b> Bodie, Kane & Marcus (2023), Chapter 9; FN3204 Subject Guide, Chapter 3.<br><br>Mayers extended the CAPM to include non-traded assets like human capital. The primary empirical implication is that the empirical SML will be flatter than the simple CAPM predicts, because the traded index is an inefficient proxy for the true market portfolio (which includes human capital)." },
+    ff5: { title: "Fama-French 5-Factor Model", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 4; Bodie, Kane & Marcus (2023), Chapter 13.<br><br>In 2015, Fama and French augmented their 3-factor model by adding two factors: RMW (Robust Minus Weak profitability) and CMA (Conservative Minus Aggressive investment). These capture the observation that firms with high operating profitability and low investment tend to have higher average returns." },
+    single_stock_alpha: { title: "Statistical Power in Single-Stock Regressions", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 3; Bodie, Kane & Marcus (2023), Chapter 13.<br><br>Individual stocks have high firm-specific variance (idiosyncratic risk), which leads to large standard errors for the estimated alpha. This reduces statistical power, making it difficult to reject the null hypothesis of zero alpha even if the stock is consistently mispriced. This is why empirical tests use portfolios of stocks." },
+    style: { title: "Style Analysis & R-Squared", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 9; Bodie, Kane & Marcus (2023), Chapter 24.<br><br>Style analysis regresses a fund's returns on passive style indices. A high R-squared (e.g., >90%) indicates that the fund's returns are almost entirely explained by its passive style exposures, suggesting little to no active stock-picking skill (alpha)." },
+    liquidity: { title: "Liquidity Premium (Acharya-Pedersen)", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 3 (Empirical Evidence); Bodie, Kane & Marcus (2023), Chapter 13.<br><br>Acharya and Pedersen (2005) extended the CAPM for liquidity. Expected return increases to compensate for both the illiquidity level of the asset and its covariance with market-wide liquidity shocks. Illiquid assets are riskier, not safer." },
+    attenuation: { title: "Errors-in-Variables & Attenuation Bias", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 3; Bodie, Kane & Marcus (2023), Chapter 13.<br><br>In the two-pass CAPM test, estimated betas from the first pass are used as the independent variable in the second pass. Because these betas contain measurement error, it introduces an 'errors-in-variables' problem, causing attenuation bias. This biases the estimated SML slope toward zero, making it appear flatter than it truly is." },
+    fama_macbeth: { title: "Fama-MacBeth Procedure Advantage", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 3; Bodie, Kane & Marcus (2023), Chapter 13.<br><br>The key methodological advantage is that it runs cross-sectional regressions for each time period, then averages the coefficients over time. This accounts for time-variation in risk premiums and betas, yielding more robust t-statistics than a single-period two-pass regression." },
+    joint_hypothesis: { title: "The Joint Hypothesis Problem", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 5 (Market Efficiency); Bodie, Kane & Marcus (2023), Chapter 11.<br><br>Fama (1991) articulated that any test of market efficiency is simultaneously a test of the asset pricing model used to define 'normal' expected returns. An observed anomaly could mean the market is inefficient, or simply that the pricing model is misspecified." },
+    flat_sml: { title: "Empirical SML: The Low-Beta Anomaly", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 3; Bodie, Kane & Marcus (2023), Chapter 13.<br><br>Empirical tests often find a positive intercept ($\\gamma_0 > 0$) and a slope ($\\gamma_1$) that is positive but much flatter than the historical market risk premium. This contradicts CAPM predictions and implies that low-beta stocks earn more than predicted, while high-beta stocks earn less." },
+    closet_indexing: { title: "Closet Indexing & Active Share", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 9; Bodie, Kane & Marcus (2023), Chapter 24.<br><br>'Closet indexing' occurs when a fund charges active management fees but maintains a very low Active Share (e.g., < 60%) and low Tracking Error, effectively mimicking the benchmark while charging higher fees." },
+    ethics: { title: "CFA Code of Ethics: Material Non-Public Information", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 1 & Chapter 28 (Investment Policy and CFA Framework).<br><br>CFA Standard II(A) prohibits the use of Material Non-Public Information (MNPI). Possessing such information creates a conflict of interest. The correct action is to refuse the information and the associated trade flow direction entirely." },
+    sim_estimates: { title: "Estimation Burden: Full Covariance vs. Single Index Model", text: "<b>Source:</b> FN3204 Subject Guide, Chapter 3; Bodie, Kane & Marcus (2023), Chapter 8 (Index Models).<br><br>The Markowitz full-covariance model requires estimating expected returns (n), variances (n), and unique covariances (n(n-1)/2), totaling <b>n(n+3)/2</b> estimates. For N=100, this is 5,150 estimates.<br><br>The Single Index Model (SIM) drastically reduces this by attributing all covariance to a common market factor. It requires estimating alpha (n), beta (n), and firm-specific variance (n) for each stock, plus the market risk premium (1) and market variance (1), totaling <b>3n + 2</b> estimates. For N=100, this is only 302 estimates." }
+};
+
+const AVATARS = { marcus: "#3b82f6", eleanor: "#a855f7", ben: "#22c55e", thorne: "#ef4444", sarah: "#f97316", system: "#64748b" };
+
+const ATTACHMENTS = {
+    'scl_q2': { filename: 'SCL_Regression_Q2.pdf', size: '1.2 MB', config: {beta:1.2, rSquared:0.85, alphaIsPositive:true} },
+    'dual_stocks': { filename: 'Stock_Comparison_Q3.pdf', size: '2.4 MB', configA: {beta:1.5, rSquared:0.85, alphaIsPositive:false}, configB: {beta:0.6, rSquared:0.30, alphaIsPositive:false}, isDual: true }
+};
+
+const scenes = [
+{type:'name',title:"Day One",narrative:"You push through the revolving doors of IPM Capital. The trading floor hums with quiet intensity. Before you can even unpack, <strong>Marcus</strong>, a Senior PM who just passed CFA Level III, slides a black coffee onto your desk.\n\n<i>\"Let's see if you actually understand what 'risk' means. Enter your name to begin.\"</i>"},
+{type:'ips',title:"Sign: Investment Policy Statement",narrative:"Before you touch the mandate, Compliance hands you the Investment Policy Statement (IPS) for Eleanor's pension fund.\n\n<b>Client type:</b> Defined-benefit pension fund — liabilities are long-dated but the trustees are risk-averse.\n<b>Return objective:</b> Beat a 60% Equity / 20% Bonds / 10% T-Bills / 10% Foreign Equity benchmark, net of fees.\n<b>Liquidity constraint:</b> At least 10% of the portfolio must sit in Cash (T-Bills) and/or Government Bonds at all times, to cover pension payouts without forced selling.\n<b>Risk constraint:</b> Factor tilts (Value, Small-cap) capped at ±15% each, per the mandate you already reviewed.\n\n<i>This is standard practice for any real institutional mandate — you cannot allocate freely; you allocate within the client's written constraints.</i>"},
+
+{type:'dialog',title:"First Impressions",speaker:"Marcus",avatar:AVATARS.marcus,narrative:"*Marcus leans back, not looking up from his Bloomberg terminal.*\n\n\"In that show you probably watch, they talk about the 'bird in the egg' and portfolio variance. Even the hotshots mess up the two-asset formula by ignoring correlation. Let's see if you can move beyond the meme.\""},
+
+{type:'quiz',title:"The Whiteboard Test",speaker:"Marcus",avatar:AVATARS.marcus,
+narrative:"*He stands and gestures at the whiteboard.*\n\n\"Asset A has σ = 20%, Asset B has σ = 30%, and they are perfectly negatively correlated. What weight goes into A for the global minimum variance portfolio, and what does that imply about the resulting risk?\"",
+options:[
+{text:"60% in Asset A; the portfolio variance is minimized but retains a small amount of idiosyncratic risk because no real-world portfolio is perfectly riskless.",correct:false,feedback:"You are letting real-world cynicism override the mathematical constraints. With ρ = -1, the assets move in perfect opposition. The formula yields 60%, and total variance hits absolute zero. Idiosyncratic risk is irrelevant here."},
+{text:"40% in Asset A; the portfolio variance is exactly zero, as the lower volatility asset requires a lower weight to balance the risk.",correct:false,feedback:"You inverted the intuition. To balance the risk, the higher volatility asset (B) needs the lower weight. The formula assigns the higher weight to the lower volatility asset: 30 / (20 + 30) = 60% in A."},
+{text:"60% in Asset A; the portfolio variance is exactly zero, creating a perfectly riskless hedge.",correct:true,feedback:"Correct. w_A = 30/(20+30) = 0.60. With ρ = -1, you can construct a riskless portfolio. You might survive here."}]},
+
+{type:'quiz',title:"What's Actually Being Priced",speaker:"Marcus",avatar:AVATARS.marcus,
+narrative:"*Marcus caps the marker and turns to you.*\n\n\"Minimum variance is the boring part. Asset A has β = 0.8, Asset B has β = 1.4. Risk-free rate is 3%, market risk premium is 8%. What is E(R_B), and where does A plot if its actual expected return is 10%?\"",
+options:[
+{text:"E(R_B) = 14.2%; Asset A plots below the SML because its actual return (10%) is lower than the market's expected return.",correct:false,feedback:"You are comparing A's return to B's return, not to A's required return. CAPM requires A to earn 3% + 0.8(8%) = 9.4%. Since 10% > 9.4%, it plots above the SML."},
+{text:"E(R_B) = 11.2%; Asset A plots on the SML because the market is in equilibrium and all assets must be fairly priced by definition.",correct:false,feedback:"Equilibrium is the theory, but the problem gives you an actual return of 10% while CAPM predicts 9.4%. The market isn't perfectly efficient here; A is generating positive alpha. Also, 1.4 × 8% = 11.2% is the risk premium; you forgot to add the 3% risk-free rate."},
+{text:"E(R_B) = 14.2%; Asset A plots above the SML, indicating it is generating a positive alpha of 0.6%.",correct:true,feedback:"Correct. E(R_B) = 3% + 1.4×8% = 14.2%. For A, CAPM predicts 9.4%. Since actual 10% > 9.4%, it has positive alpha and plots above the SML."}]},
+
+{type:'dialog',title:"The Client",speaker:"Eleanor Vance",avatar:AVATARS.eleanor,narrative:"*Marcus nods, almost impressed. \"Fine. You know the textbook. Now meet your actual client.\"*\n\n*Eleanor Vance adjusts her glasses.* \"I chair the pension committee. I have £10 million to manage. I need steady, defensible performance. Let's see your initial allocation.\""},
+
+{type:'quiz',title:"The Mandate",speaker:"Eleanor Vance",avatar:AVATARS.eleanor,
+narrative:"\"Before we begin,\" *Eleanor taps the IPS,* \"prove you understand constraints. My target expected return is 8.0%. Asset X (Equity) has E[R]=10%, σ=20%. Asset Y (Bonds) has E[R]=6%, σ=10%. Correlation 0.5. How do you construct this portfolio?\"",
+options:[
+{text:"66.7% X and 33.3% Y; this minimizes the portfolio variance while achieving an expected return above the 8% target to provide a safety buffer for the pension fund.",correct:false,feedback:"Eleanor's IPS strictly mandates an 8.0% target. Over-delivering violates the constraint and forces the portfolio to take on unnecessary variance. Read the IPS carefully."},
+{text:"50% X and 50% Y; this exactly meets the 8% target constraint, allowing the optimization algorithm to focus purely on minimizing variance.",correct:true,feedback:"Precisely. E[R] = 0.5(10%) + 0.5(6%) = 8%. This meets my target constraint, allowing the optimization to focus purely on minimizing variance."},
+{text:"40% X and 60% Y; this guarantees the 8% target is met even if Asset X underperforms, prioritizing capital preservation over exact targeting.",correct:false,feedback:"You are guessing weights based on 'safety' without doing the math. 0.4(10%) + 0.6(6%) = 7.6%. You missed the 8% target entirely."}]},
+
+{type:'event',quarter:1},
+{type:'alloc',quarter:1,theoryKey:'mpt',title:"Initial Mandate Construction",narrative:"Design the initial asset allocation for Eleanor's £10m mandate. Weights must sum to 100%. Factor tilts (Value, Small-cap) are constrained to ±15%."},
+{type:'sim',quarter:1,title:"Recession Hits",narrative:"Global growth downgraded. Equity markets fell sharply. Government bonds rallied as yields dropped. Value stocks held out better than growth."},
+
+{type:'dialog',title:"Inbox: Q1 Post-Mortem",speaker:"System",avatar:AVATARS.system,narrative:"You return to your desk to find emails from the research and quant teams regarding the Q1 drawdown."},
+
+{type:'quiz',title:"Lunch Break Study Session",speaker:"Ben",avatar:AVATARS.ben,
+narrative:"*Ben slides into the seat opposite you in the cafeteria, looking stressed with a thick textbook open.*\n\n\"Hey, I'm drowning in this Single Index Model stuff. I ran the decomposition on that stock that caused our Q1 drawdown. Given β = 1.5, market variance σ²_M = 0.04, and total variance σ²_i = 0.15, what is the firm-specific variance?\"",
+options:[
+{text:"0.09, because in the Single Index Model, a high beta (>1) implies that the firm-specific variance is equal to the systematic variance.",correct:false,feedback:"0.09 is the systematic variance (β²σ²_M = 1.5² × 0.04). A high beta just means high systematic risk, not that the two variances are equal. Total variance is the sum of both. You calculated the wrong half of the equation."},
+{text:"0.11, calculated by adding the market variance (0.04) to the beta-squared penalty (0.07) to account for the stock's high volatility.",correct:false,feedback:"Total variance is given as 0.15. You cannot just add market variance and a beta penalty; you must subtract the systematic portion (β²σ²_M) from the total variance to isolate the firm-specific portion."},
+{text:"0.06, derived by subtracting the systematic variance (β²σ²_M = 0.09) from the total variance (0.15).",correct:true,feedback:"Exactly! Systematic = 2.25 × 0.04 = 0.09. Firm-specific = 0.15 - 0.09 = 0.06. Thanks, I owe you lunch!"}]},
+
+{type:'email',title:"CAPM Testing Literature",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Roll's Critique",
+narrative:"As we prepare the quarterly report, remember the limitations of our benchmark. According to Richard Roll's 1977 critique, why is the CAPM fundamentally untestable in practice?",
+options:[
+{text:"Beta estimates are highly unstable and subject to structural breaks, meaning the SML cannot be reliably tested over long horizons without adjusting for time-varying risk.",correct:false,feedback:"You are confusing practical econometric issues with theoretical critiques. Roll's argument is much deeper: it is about the impossibility of observing the true market portfolio, not just measurement error."},
+{text:"The true market portfolio, encompassing all risky assets (including human capital and real estate), is unobservable, meaning we can only test the efficiency of our proxy, not the CAPM itself.",correct:true,feedback:"Correct. Without the true market portfolio, we can only test the efficiency of the proxy, not the CAPM itself."},
+{text:"The CAPM assumes investors can borrow and lend at the risk-free rate, which is empirically false due to credit spreads and inflation risk, invalidating the SML.",correct:false,feedback:"While true in practice, this is a critique of the assumptions, not Roll's Critique. Roll specifically targeted the unobservability of the market portfolio."}]},
+
+{type:'email',title:"Methodology Check",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Fama-MacBeth Methodology",
+narrative:"When testing the CAPM, why did Fama and MacBeth (1973) recommend forming portfolios of stocks grouped by beta for the second-pass cross-sectional regression, rather than using individual stocks?",
+options:[
+{text:"It guarantees that the second-pass regression will yield a statistically significant positive alpha, proving that the market is inefficient and rewarding active management.",correct:false,feedback:"No methodology can guarantee a theoretical result like positive alpha. Fama-MacBeth improves statistical power and reduces measurement error; it doesn't rig the game to find inefficiencies."},
+{text:"It eliminates the need to estimate betas in the first pass by using accounting fundamentals as the independent variables in the second pass, avoiding look-ahead bias.",correct:false,feedback:"Fama-MacBeth still uses betas (or factor loadings) from the first pass. The innovation is in grouping them to reduce measurement error, not replacing them with fundamentals."},
+{text:"It reduces the errors-in-variables problem by diversifying away firm-specific noise in the first pass, leading to more robust cross-sectional inference in the second pass.",correct:true,feedback:"Correct. Grouping into portfolios diversifies away firm-specific noise, reducing attenuation bias in the second pass."}]},
+
+{type:'dialog',title:"Green Shoots",speaker:"Sarah",avatar:AVATARS.sarah,narrative:"*Sarah Jenkins, Head of Macro Strategy, leans against your cubicle.* \"Green shoots are emerging. Central banks signal patience. Small-caps and value are starting to outperform. We need to rebalance for Q2.\""},
+{type:'event',quarter:2},
+{type:'alloc',quarter:2,theoryKey:'tilts',title:"Tactical Rebalance — Early Recovery",narrative:"Adjust your allocation for Q2 Early Recovery. Factor tilts remain capped at ±15%."},
+{type:'sim',quarter:2,title:"Recovery Takes Hold",narrative:"Markets recovered modestly. Small-caps outperformed. The yield curve steepened."},
+
+{type:'dialog',title:"Inbox: Q2 Recovery Data",speaker:"System",avatar:AVATARS.system,narrative:"Q2 recovery brings new data. The Quant Desk sends over regression outputs and factor updates."},
+
+{type:'email',title:"Regression Output",speaker:"Quant Desk",from:"Quant Desk <quant@ipmcapital.com>",avatar:AVATARS.thorne,subject:"SCL Regression Q2",
+narrative:"I've attached the time-series regression results for your portfolio's excess returns against the market. Please review the scatter plot and the R-squared.",
+attachment:'scl_q2',
+question:"Based on the attached regression output, what is the most accurate conclusion regarding the portfolio's performance relative to the CAPM?",
+options:[
+{text:"The portfolio is correctly priced, as the market factor explains 85% of the total variance, satisfying the CAPM equilibrium condition that all systematic risk is compensated.",correct:false,feedback:"Under strict CAPM equilibrium, the intercept (Jensen's alpha) must be zero. A high R-squared only indicates the proportion of variance explained by the market. A non-zero intercept implies the manager is generating abnormal performance."},
+{text:"The portfolio exhibits a statistically significant positive alpha, indicating it plots above the SML and violates strict CAPM equilibrium.",correct:true,feedback:"Correct. Under CAPM, all assets should plot on the SML, meaning Jensen's alpha must be zero. A positive intercept indicates abnormal performance."},
+{text:"The portfolio's positive slope indicates that the manager has successfully eliminated all systematic risk, resulting in a pure alpha generation strategy.",correct:false,feedback:"The slope is beta, representing systematic risk exposure, not its elimination. Correct pricing requires the intercept to be zero, regardless of slope."}]},
+
+{type:'quiz',title:"Coffee Machine Chat",speaker:"Ben",avatar:AVATARS.ben,
+narrative:"*Ben is waiting for his espresso, holding a printed research paper.*\n\n\"I'm reading the 1992 Journal of Finance paper. Fama and French noted that size and beta are correlated. How did they isolate the size effect from the beta effect in their empirical tests?\"",
+options:[
+{text:"They ran a simple univariate regression of returns on market capitalization, arguing that beta is just a proxy for size and doesn't need to be controlled for separately.",correct:false,feedback:"A simple univariate regression would suffer from omitted variable bias due to the correlation between size and beta. You cannot just ignore one of the variables."},
+{text:"They excluded all stocks with a beta greater than 1.0 to create a homogeneous sample, ensuring that the size effect wasn't contaminated by high-beta tech stocks.",correct:false,feedback:"They did not exclude high-beta stocks; they controlled for beta using a specific sorting methodology to keep the data intact."},
+{text:"They used a double-sorting procedure: first into size deciles, then within each decile by beta, to isolate the effects.",correct:true,feedback:"Exactly. This allowed them to examine the effect of beta while holding size constant, and vice versa. Smart, right?"}]},
+
+{type:'dialog',title:"Inflation Pressures",speaker:"Dr. Aris Thorne",avatar:AVATARS.thorne,narrative:"*Aris points to his monitor, where yield curves are shifting.* \"Expansion gathers pace. Inflation pressures build. Long bonds are selling off. Before you rebalance, let's walk through some of the analytics.\""},
+{type:'event',quarter:3},
+{type:'alloc',quarter:3,theoryKey:'duration',title:"Expansion Rebalance",narrative:"Adjust your allocation for Q3 Expansion. Yields are rising. Factor tilts remain capped at ±15%."},
+{type:'sim',quarter:3,title:"Expansion Heats Up",narrative:"Value stocks surged. Long bonds sold off as yields rose. Inflation pressures built."},
+
+{type:'dialog',title:"Inbox: Risk & Analytics",speaker:"System",avatar:AVATARS.system,narrative:"Expansion phase. Risk, Compliance, and Research are pinging you with analytics."},
+
+{type:'email',title:"Covariance Matrix",speaker:"Risk Management",from:"Risk Management <risk@ipmcapital.com>",avatar:AVATARS.thorne,subject:"SIM Covariance Calculation",
+narrative:"One of the main advantages of the Single Index Model is the reduction in estimates. In the SIM, how is the covariance between two distinct stocks i and j calculated?",
+options:[
+{text:"Cov(R_i, R_j) = σ_i × σ_j × ρ_ij, because this is the universal definition of covariance and the SIM doesn't change the fundamental math of asset co-movement.",correct:false,feedback:"While true generally, the Single Index Model makes a specific assumption about firm-specific returns (that they are uncorrelated). This assumption simplifies the general formula."},
+{text:"Cov(R_i, R_j) = β_i × β_j × σ²_M, as the model assumes zero correlation in firm-specific returns, meaning stocks only co-move because of their common exposure to the market factor.",correct:true,feedback:"Correct. Stocks only co-move because of their common exposure to the market factor."},
+{text:"Cov(R_i, R_j) = β_i + β_j, reflecting the additive nature of factor exposures in a multi-asset portfolio.",correct:false,feedback:"Covariance is a multiplicative relationship involving variance, not additive."}]},
+
+{type:'email',title:"Portfolio Theory",speaker:"Marcus",from:"Marcus <marcus.pm@ipmcapital.com>",avatar:AVATARS.marcus,subject:"Tangency Portfolio",
+narrative:"When a risk-free asset is introduced to the efficient frontier, the new efficient frontier becomes a straight line. What is this line called, and what portfolio lies at the tangency point?",
+options:[
+{text:"Security Market Line; the Global Minimum Variance Portfolio.",correct:false,feedback:"The SML graphs expected return against beta. The GMVP is rarely optimal for return-seeking investors."},
+{text:"Capital Allocation Line or Capital Market Line; the Tangency Portfolio, which maximizes the Sharpe ratio.",correct:true,feedback:"Correct. The tangency portfolio offers the highest reward-to-volatility ratio."},
+{text:"Characteristic Line; the Market Portfolio.",correct:false,feedback:"The Characteristic Line is the regression line of a stock's excess returns on the market's."}]},
+
+{type:'email',title:"Stock Comparison",speaker:"Quant Desk",from:"Quant Desk <quant@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Single-Index Regressions",
+narrative:"I've attached the single-index model regressions for Stock A and Stock B against the market. Observe the slope and the scatter of points around the regression line carefully.",
+attachment:'dual_stocks',
+question:"Based on the attached graphs, which stock has higher systematic risk, and which has higher idiosyncratic risk?",
+options:[
+{text:"Stock B exhibits higher systematic risk; Stock A exhibits higher idiosyncratic risk.",correct:false,feedback:"Incorrect. Stock A clearly has the steeper slope, and Stock B has the wider scatter."},
+{text:"Stock A exhibits higher systematic risk; Stock B exhibits higher idiosyncratic risk.",correct:true,feedback:"Correct. Systematic risk is beta (slope). Idiosyncratic risk is residual variance (1 - R²), visibly larger for Stock B."},
+{text:"Both stocks exhibit equal idiosyncratic risk, as they are regressed against the same market index.",correct:false,feedback:"Idiosyncratic risk varies by stock and is inversely related to R-squared."}]},
+
+{type:'email',title:"APT Calculation",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Arbitrage Pricing Theory",
+narrative:"Let's test your APT. Two independent factors F1 and F2. Risk-free rate is 6%. Portfolio P has β_1 = 1.5 and β_2 = -0.5. Risk premiums: F1 = 8%, F2 = 4%. What is E(R_P)?",
+options:[
+{text:"14%, calculated by ignoring the risk-free rate and only summing the factor risk premiums, as APT is a relative pricing model.",correct:false,feedback:"The APT formula is E(R) = Rf + β1RP1 + β2RP2. APT is an absolute pricing model; you must include the risk-free rate."},
+{text:"16%, calculated as R_f + (β_1 × RP_1) + (β_2 × RP_2), properly accounting for the negative beta.",correct:true,feedback:"Correct. E(R_P) = 6% + (1.5×8%) + (-0.5×4%) = 6% + 12% - 2% = 16%."},
+{text:"20%, calculated by adding the absolute values of the factor risk premiums to the risk-free rate to account for the volatility of both factors.",correct:false,feedback:"Pay close attention to the sign of the second beta. A negative factor loading reduces the required return, it does not add to it."}]},
+
+{type:'dialog',title:"Late-Cycle Signals",speaker:"Sarah",avatar:AVATARS.sarah,narrative:"*Sarah looks grim.* \"Late-cycle signals flash amber. Growth is slowing, but equities still advance. Bonds stabilize. Let's compare two active funds before your final rebalance.\""},
+{type:'event',quarter:4},
+{type:'alloc',quarter:4,theoryKey:'active',title:"Final Rebalance — Late Cycle",narrative:"Adjust your allocation for Q4 Late Cycle / Peak. Factor tilts remain capped at ±15%."},
+{type:'sim',quarter:4,title:"Peak Signals",narrative:"Growth slowed. Equities advanced modestly. Bonds stabilized. Your annual review awaits."},
+
+{type:'dialog',title:"Inbox: Board Due Diligence",speaker:"System",avatar:AVATARS.system,narrative:"The board requests a rapid due diligence review. You have a flood of emails from across the firm."},
+
+{type:'email',title:"Market Timing",speaker:"Sarah",from:"Sarah <sarah.macro@ipmcapital.com>",avatar:AVATARS.sarah,subject:"Treynor-Mazuy Model",theoryKey:'timing',
+narrative:"We're evaluating a manager's timing ability using the Treynor-Mazuy model: R_p - R_f = α + b(R_M - R_f) + c(R_M - R_f)² + e. What does a statistically significant positive 'c' indicate?",
+options:[
+{text:"Poor market timing, as the squared term implies the manager is taking on excessive non-linear tail risk, creating a concave payoff profile that destroys value.",correct:false,feedback:"A negative 'c' indicates poor timing (concave payoff). A positive 'c' means the manager successfully increases beta in up markets and decreases it in down markets."},
+{text:"The portfolio has a high Information Ratio due to non-linear payoffs, indicating the manager is being compensated for taking on options-like tail risk.",correct:false,feedback:"The 'c' coefficient specifically measures timing ability (market direction), not the Information Ratio (which measures residual return per unit of residual risk)."},
+{text:"Successful market timing, as the manager dynamically increases portfolio beta when the market rises and decreases it when the market falls, creating a convex payoff.",correct:true,feedback:"Sharp. A positive 'c' creates a convex payoff profile, indicating successful timing."}]},
+
+{type:'email',title:"Performance Metric",speaker:"Marcus",from:"Marcus <marcus.pm@ipmcapital.com>",avatar:AVATARS.marcus,subject:"Sub-Portfolio Evaluation",
+narrative:"When evaluating a well-diversified sub-portfolio that will be mixed with a broader market index, which performance metric is most appropriate?",
+options:[
+{text:"Sharpe Ratio, because it penalizes all volatility equally, ensuring the sub-portfolio isn't taking on hidden risks that could blow up the master fund.",correct:false,feedback:"Sharpe penalizes upside volatility and firm-specific risk, which is irrelevant for a diversified sub-portfolio added to a master fund."},
+{text:"Jensen's Alpha alone, without considering risk, because the ultimate goal of the sub-portfolio is to generate absolute returns for the pension fund.",correct:false,feedback:"Alpha alone doesn't tell you the risk taken to achieve it."},
+{text:"Information Ratio or Treynor Ratio, because the relevant risk is systematic or residual risk, not total volatility.",correct:true,feedback:"Correct. For a sub-portfolio added to a diversified master, we care about alpha per unit of non-diversified risk."}]},
+
+{type:'dialog',title:"Coffee Break Complaint",speaker:"Ben",avatar:AVATARS.ben,theoryKey:'sim_estimates',
+narrative:"*Ben slumps into the chair next to you, rubbing his temples.*\n\n\"Marcus won't stop bragging about passing CFA Level 3. Meanwhile, I'm drowning in Level 1 prep. He mentioned the Single Index Model is a total lifesaver for estimation. Something about only needing $3N + 2$ estimates instead of the full covariance matrix's $N(N+3)/2$. For 100 stocks, that's a massive difference in workload. I just hope I remember the exact numbers for the exam...\""},
+
+{type:'email',title:"System Requirements",speaker:"IT & Quant",from:"IT & Quant <itsupport@ipmcapital.com>",avatar:AVATARS.thorne,subject:"SIM Estimation Burden",
+narrative:"For N = 100 stocks, how many estimates does the full covariance model need versus the Single Index Model?",
+options:[
+{text:"Full: 4,950. SIM: 200, because the SIM only requires estimating the alpha and beta for each stock, ignoring residual variance since it's diversifiable.",correct:false,feedback:"You still need to estimate residual variance for the SIM! The formula is 3N + 2. For N=100, that's 302, not 200. You cannot ignore the error term."},
+{text:"Full: 5,150. SIM: 302, because the full model requires N(N+3)/2 estimates, while the SIM only requires 3N + 2 parameters (alpha, beta, residual variance per stock, plus market mean and variance).",correct:true,feedback:"Correct. The full covariance model requires n(n+3)/2 = 5,150 estimates. The SIM requires only 3n + 2 = 302 estimates, drastically reducing the data burden."},
+{text:"Full: 10,000. SIM: 300, because the full model requires N^2 covariance estimates, and the SIM requires exactly 3 estimates per stock.",correct:false,feedback:"The covariance matrix is symmetric, so you don't need N^2 estimates. You need N(N+1)/2 for variances/covariances, plus N for means. Total N(N+3)/2."}]},
+
+{type:'dialog',title:"Elevator Ride",speaker:"Dr. Aris Thorne",avatar:AVATARS.thorne,theoryKey:'mayers',
+narrative:"*You step into the elevator with Dr. Thorne. He doesn't look up from his tablet.*\n\n\"Mayers' 1972 extension to the CAPM is a favorite of mine. By including non-traded assets like human capital, the empirical SML inevitably becomes flatter than the simple CAPM predicts. Why? Because the traded index we use is an inefficient proxy for the true market portfolio. Keep that in mind for the next compliance check.\""},
+
+{type:'email',title:"Human Capital",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Mayers (1972) Extension",
+narrative:"Mayers extended the CAPM to include non-traded assets like human capital. What is the primary empirical implication for the SML?",
+options:[
+{text:"The SML becomes steeper, as human capital acts as a leveraged bet on the market, increasing the overall systematic risk premium required by investors to hold equities.",correct:false,feedback:"Because human capital is untraded, it makes the observed market proxy inefficient. This biases betas and flattens the empirical SML, it does not make it steeper."},
+{text:"The empirical SML will be flatter than the simple CAPM predicts, because the traded equity index is an inefficient proxy for the true market portfolio, which includes human capital.",correct:true,feedback:"Correct. The wedge between the traded index and the true market portfolio biases beta estimates and flattens the SML."},
+{text:"The SML shifts vertically, as human capital has a zero beta but a positive expected return, creating a new intercept that is independent of market risk.",correct:false,feedback:"The inclusion of non-traded assets fundamentally alters the slope by introducing a wedge between the true market and the observed proxy, it does not just shift the intercept."}]},
+
+{type:'dialog',title:"Late Night Office",speaker:"Ben",avatar:AVATARS.ben,theoryKey:'ff5',
+narrative:"*It's 8 PM. Ben walks by your desk with a slice of pizza, looking at a tablet.*\n\n\"Marcus is already talking about Level 4 or whatever, but I'm stuck on Level 1. Fama and French added two factors to their model in 2015. I know it's not Momentum or Liquidity... something about profitability and investment? I need to review the exact acronyms before the next quiz.\""},
+
+{type:'quiz',title:"Late Night Pizza",speaker:"Ben",avatar:AVATARS.ben,
+narrative:"*Ben stops at your desk, pointing at his screen.*\n\n\"Okay, quiz me. In 2015, Fama and French augmented their three-factor model to five factors. Which two were added?\"",
+options:[
+{text:"UMD (Momentum) and LIQ (Liquidity), as these are the most significant anomalies documented in the literature post-1993.",correct:false,feedback:"UMD is Carhart's 4-factor model. LIQ is from Pástor-Stambaugh or Acharya-Pedersen. Fama-French specifically use firm accounting characteristics: Profitability (RMW) and Investment (CMA)."},
+{text:"RMW (Robust Minus Weak profitability) and CMA (Conservative Minus Aggressive investment), capturing the tendency for firms with high operating profitability and low investment to outperform.",correct:true,feedback:"Exactly. High profitability and low investment firms tend to outperform. Thanks, I'm gonna pass this exam!"},
+{text:"MACRO (GDP growth surprises) and DEF (Default risk spreads), based on the Chen, Roll, and Ross macroeconomic factor model.",correct:false,feedback:"Those are macroeconomic factors. Fama-French are strictly firm-level characteristic factors. Remember the acronyms: RMW and CMA."}]},
+
+{type:'email',title:"Compliance Check",speaker:"Compliance",from:"Compliance <compliance@ipmcapital.com>",avatar:AVATARS.system,subject:"CML vs SML",
+narrative:"Many students confuse the CML and the SML. What is the fundamental difference in the risk measure on the x-axis?",
+options:[
+{text:"CML uses beta; SML uses standard deviation.",correct:false,feedback:"Reversed."},
+{text:"CML uses total risk (σ) for efficient portfolios; SML uses systematic risk (β) for all assets.",correct:true,feedback:"Correct. CML is about portfolio efficiency, SML is about asset pricing."},
+{text:"No difference; they are two names for the same line.",correct:false,feedback:"They are fundamentally different."}]},
+
+{type:'email',title:"Statistical Power",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Single Stock Alpha",theoryKey:'single_stock_alpha',
+narrative:"Why might a single stock's time-series regression yield insignificant alpha, even if the stock is consistently mispriced?",
+options:[
+{text:"CAPM requires alpha to be exactly 1.0.",correct:false,feedback:"CAPM requires alpha to be exactly 0.0 in equilibrium."},
+{text:"High firm-specific variance leads to large standard errors, reducing statistical power.",correct:true,feedback:"Correct. Individual stocks are noisy. This is why we test using portfolios."},
+{text:"Market returns are perfectly normally distributed.",correct:false,feedback:"The primary reason is high idiosyncratic volatility, which inflates the standard error of the alpha estimate."}]},
+
+{type:'email',title:"APT Core",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"No-Arbitrage Assumption",
+narrative:"The APT derives a linear expected return-beta relationship without assuming a market portfolio. What is the core assumption?",
+options:[
+{text:"All investors have identical homogeneous expectations.",correct:false,feedback:"That is a CAPM assumption. APT does not require homogeneous expectations."},
+{text:"There is only one single factor driving all returns.",correct:false,feedback:"APT is explicitly a multi-factor model."},
+{text:"In well-diversified portfolios, firm-specific risk is eliminated, so mispricing creates riskless arbitrage.",correct:true,feedback:"Correct. APT relies on the law of one price in well-diversified portfolios."}]},
+
+{type:'email',title:"Style Analysis",speaker:"Sarah",from:"Sarah <sarah.macro@ipmcapital.com>",avatar:AVATARS.sarah,subject:"R-Squared Interpretation",theoryKey:'style',
+narrative:"We regressed this fund's returns on 12 style indices. R-squared is 97.5%. What does this indicate?",
+options:[
+{text:"Exceptional stock-picking ability.",correct:false,feedback:"High R² means the model explains the returns, leaving little room for alpha. It indicates passive style exposure, not stock-picking skill."},
+{text:"Returns are almost entirely explained by passive style exposures, suggesting little active skill.",correct:true,feedback:"Exactly. High R² in style analysis means the manager holds a static mix of styles."},
+{text:"The fund is violating its mandate.",correct:false,feedback:"Not necessarily. It just means high correlation with style benchmarks. It does not inherently imply a mandate violation."}]},
+
+{type:'email',title:"Liquidity Premium",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Acharya-Pedersen (2005)",theoryKey:'liquidity',
+narrative:"Acharya and Pedersen extended the CAPM for liquidity. How does this affect the expected return of an illiquid asset?",
+options:[
+{text:"Expected return decreases because illiquid assets are considered 'safer' havens during market stress.",correct:false,feedback:"Illiquid assets are riskier, not safer. Investors demand a premium to hold them."},
+{text:"No effect on expected return; liquidity risk is purely idiosyncratic and can be fully diversified away.",correct:false,feedback:"Market-wide liquidity is a systematic risk factor. It cannot be diversified away."},
+{text:"Expected return increases to compensate for both the asset's illiquidity level and its covariance with market-wide liquidity shocks.",correct:true,feedback:"Correct. Investors demand a premium for illiquidity and for assets that become illiquid during market stress."}]},
+
+{type:'dialog',title:"Printer Room Chat",speaker:"Dr. Aris Thorne",avatar:AVATARS.thorne,theoryKey:'attenuation',
+narrative:"*Dr. Thorne is waiting for a document to print.*\n\n\"When we use estimated betas from the first pass as independent variables in the second pass, we introduce measurement error. This causes 'attenuation bias', biasing the SML slope toward zero. It makes the empirical SML look flatter than it truly is. A classic econometrics trap. Don't let it catch you off guard.\""},
+
+{type:'email',title:"Attenuation Bias",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Two-Pass Regression",
+narrative:"In the two-pass CAPM test, we use estimated betas from the first pass as the independent variable in the second pass. What statistical problem does this introduce?",
+options:[
+{text:"Heteroskedasticity, which inflates the standard errors of the alpha estimates, making the SML appear steeper than it truly is.",correct:false,feedback:"Heteroskedasticity is about non-constant variance of the error term. The issue here is measurement error in the independent variable (beta), which causes attenuation bias (slope biased toward zero)."},
+{text:"The errors-in-variables problem, causing attenuation bias — the estimated slope of the SML is biased toward zero, making it appear flatter than the theoretical CAPM predicts.",correct:true,feedback:"Correct. Measurement error in beta makes the SML appear flatter than it truly is."},
+{text:"Perfect multicollinearity, making the second-pass regression mathematically unsolvable because beta is perfectly correlated with the market risk premium.",correct:false,feedback:"Multicollinearity occurs when independent variables are correlated with each other. Here, the issue is that the independent variable (beta) is measured with error."}]},
+
+{type:'quiz',title:"Elevator Ride",speaker:"Ben",avatar:AVATARS.ben,
+narrative:"*You're waiting for the elevator. Ben rushes over, holding a coffee.*\n\n\"Quick question before the board meeting! As N approaches infinity in an equally weighted portfolio, what happens to total variance under the Single Index Model? I need to know the diversification limit.\"",
+options:[
+{text:"Converges to zero, eliminating all risk.",correct:false,feedback:"Only firm-specific risk converges to zero. Systematic risk remains as the floor."},
+{text:"Converges to the variance of the risk-free rate.",correct:false,feedback:"Rf has zero variance, but a diversified risky portfolio retains market variance."},
+{text:"Converges to the average systematic variance (β̄² × σ²_M), as firm-specific variance approaches zero.",correct:true,feedback:"Exactly. Diversification eliminates firm-specific risk, but systematic risk is the floor. See you in the meeting!"}]},
+
+{type:'email',title:"Fama-MacBeth",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Methodology Advantage",theoryKey:'fama_macbeth',
+narrative:"What is the key methodological advantage of the Fama-MacBeth procedure over a simple single-period two-pass regression?",
+options:[
+{text:"Eliminates the need for a risk-free rate.",correct:false,feedback:"The risk-free rate is still required to calculate excess returns."},
+{text:"Guarantees the intercept will be exactly zero.",correct:false,feedback:"No empirical method guarantees theoretical results. It improves statistical inference."},
+{text:"Runs cross-sectional regressions for each period, then averages coefficients over time for robust inference.",correct:true,feedback:"Correct. This accounts for time-variation in risk premiums and betas, yielding more robust t-statistics."}]},
+
+{type:'quiz',title:"Morning Coffee",speaker:"Ben",avatar:AVATARS.ben,
+narrative:"*Ben is at the coffee machine, looking at his phone.*\n\n\"If a stock has a significantly negative beta on the HML factor in a Fama-French regression, how is it classified, and how will it perform during a value rally? I always get this mixed up.\"",
+options:[
+{text:"Small-cap stock. It will outperform.",correct:false,feedback:"SMB captures size, not HML. A negative HML loading indicates a growth stock."},
+{text:"Growth stock. It will underperform during a value rally.",correct:true,feedback:"Correct. Negative HML loading means it behaves like the 'Low' (growth) side, suffering when value outperforms. You're getting good at this!"},
+{text:"Negative alpha. Sell immediately.",correct:false,feedback:"A negative factor loading describes risk exposure, not abnormal return. It does not automatically mean negative alpha."}]},
+
+{type:'dialog',title:"Hallway Encounter",speaker:"Dr. Aris Thorne",avatar:AVATARS.thorne,theoryKey:'joint_hypothesis',
+narrative:"*Dr. Thorne stops you in the hallway.*\n\n\"Fama's Joint Hypothesis Problem is a favorite of mine. You can never test market efficiency in isolation. Why? Because any test of efficiency is simultaneously a test of the asset pricing model used to define 'normal' returns. An anomaly might just mean your model is misspecified, not that the market is inefficient. Keep that in mind.\""},
+
+{type:'email',title:"Joint Hypothesis",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Fama (1991)",
+narrative:"Fama articulated the Joint Hypothesis Problem. Why is it impossible to test market efficiency in isolation?",
+options:[
+{text:"Transaction costs, bid-ask spreads, and short-sale constraints prevent arbitrageurs from correcting mispricing, meaning markets can remain inefficient indefinitely.",correct:false,feedback:"This describes 'Limits to Arbitrage', a behavioral/frictional critique. Fama's Joint Hypothesis is a purely theoretical issue about testing efficiency without knowing the true pricing model."},
+{text:"Any test of market efficiency is simultaneously a test of the asset pricing model used to define 'normal' expected returns; an anomaly could simply mean the pricing model is misspecified.",correct:true,feedback:"Correct. An anomaly could mean the market is inefficient, or simply that your pricing model is misspecified."},
+{text:"Insider trading is illegal and unmeasurable, making it impossible to test strong-form efficiency, which invalidates all empirical tests of the EMH.",correct:false,feedback:"The Joint Hypothesis applies to all forms of efficiency (weak, semi-strong, strong). It is not about insider trading; it is about the impossibility of separating market inefficiency from a bad asset pricing model."}]},
+
+{type:'email',title:"Empirical SML",speaker:"Dr. Aris Thorne",from:"Dr. Aris Thorne <aris.thorne@ipmcapital.com>",avatar:AVATARS.thorne,subject:"Flat Slope",theoryKey:'flat_sml',
+narrative:"In a second-pass regression, the intercept γ₀ is significantly positive and the slope γ₁ is positive but much flatter than the historical market risk premium. What does this imply?",
+options:[
+{text:"Perfectly validates the CAPM.",correct:false,feedback:"CAPM predicts γ₀ = 0 and slope = market risk premium. A flat slope and positive intercept directly contradict CAPM predictions."},
+{text:"Violation of CAPM: low-beta stocks earn more than predicted, high-beta earn less.",correct:true,feedback:"Correct. A flat slope and positive intercept contradict CAPM predictions. This is the low-beta anomaly."},
+{text:"Proves the risk-free rate is higher than T-bills.",correct:false,feedback:"The flat slope is a well-documented anomaly (the low-beta anomaly) that goes beyond just proxy error in the risk-free rate."}]},
+
+{type:'dialog',title:"Pre-Meeting Briefing",speaker:"Marcus",avatar:AVATARS.marcus,theoryKey:'closet_indexing',
+narrative:"*Marcus leans against your cubicle, lowering his voice.*\n\n\"Eleanor is reviewing the fund's fee structure today. She hates it when managers charge active fees for a portfolio that just hugs the benchmark. Low Active Share, low tracking error... the industry term is 'Closet Indexing'. Make sure you know the metrics that define it before she emails you.\""},
+
+{type:'email',title:"Client Feedback",speaker:"Eleanor Vance",from:"Eleanor Vance <eleanor@pensionfund.com>",avatar:AVATARS.eleanor,subject:"Active Share",
+narrative:"I noticed the fund charges active management fees, but the Active Share is only 40% and the Tracking Error is 1.5%. What is this called?",
+options:[
+{text:"Smart Beta, as it systematically targets factor premiums with low turnover and low tracking error relative to the cap-weighted benchmark.",correct:false,feedback:"Smart Beta would have high Active Share relative to the cap-weighted benchmark because it deliberately tilts away from market weights. Low Active Share means it is just hugging the benchmark."},
+{text:"Closet Indexing, where the fund charges active management fees for a portfolio that closely mimics the benchmark, evidenced by the low Active Share (40%) and low Tracking Error (1.5%).",correct:true,feedback:"Exactly. I will not pay active fees for passive-like performance. Good catch."},
+{text:"A Core-Satellite approach, deliberately separating passive and active allocations to control costs while maintaining a low overall tracking error.",correct:false,feedback:"A core-satellite approach would have a clear, deliberate separation. 'Closet indexing' is a pejorative term for a fund that claims to be active but secretly just hugs the benchmark to collect fees."}]},
+
+{type:'dialog',title:"Final Sign-Off",speaker:"Marcus",avatar:AVATARS.marcus,theoryKey:'ethics',
+narrative:"*Marcus hands you a file, his expression serious.*\n\n\"One last thing. A broker just offered you exclusive 'material non-public information' about a merger in exchange for directing trade flow. The CFA Code of Ethics is absolute on this. There is no grey area. Remember Standard II(A) before you reply to his next email.\""},
+
+{type:'email',title:"Ethics Check",speaker:"Marcus",from:"Marcus <marcus.pm@ipmcapital.com>",avatar:AVATARS.marcus,subject:"Ethics Check",
+narrative:"A broker offers you exclusive 'material non-public information' about a merger in exchange for directing trade flow. CFA Code of Ethics?",
+options:[
+{text:"Accept the information but do not trade on it, to maintain the broker relationship without violating the law.",correct:false,feedback:"Possessing the information creates a conflict of interest and potential for misuse. You must refuse entirely."},
+{text:"Accept and trade — it's a 'grey area' in some international jurisdictions.",correct:false,feedback:"CFA Standards are globally strict on MNPI. There is no grey area."},
+{text:"Refuse the information and the trade flow direction entirely, as it violates CFA Standard II(A) regarding Material Non-Public Information.",correct:true,feedback:"*Marcus smiles, genuinely this time.* \"Perfect. You protect the firm's integrity. Welcome to IPM Capital, officially.\""}]},
+
+{type:'epilogue',title:"Internship Complete",narrative:""}
+];
+
+function renderScene(){
+const scene=scenes[state.sceneIndex];
+const container=document.getElementById('scene-container');
+const actionContainer=document.getElementById('action-container');
+container.classList.remove('fade-in');actionContainer.classList.remove('fade-in');
+void container.offsetWidth;
+container.classList.add('fade-in');actionContainer.classList.add('fade-in');
+
+const qi=scenes.slice(0,state.sceneIndex).filter(s=>['quiz','email'].includes(s.type)).length;
+const totalQ=scenes.filter(s=>['quiz','email'].includes(s.type)).length;
+document.getElementById('progress-display').innerText=`${qi}/${totalQ}`;
+
+if(scene.type==='name'){
+container.innerHTML=`<h2 class="text-2xl font-bold text-white mb-4">[${scene.title}]</h2><div class="text-slate-300 leading-relaxed whitespace-pre-line">${scene.narrative}</div>`;
+actionContainer.innerHTML=`<input type="text" id="studentNameInput" class="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white mb-4 outline-none focus:border-blue-500" placeholder="Enter your full name">
+<button onclick="startGame()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded transition"> Start Mandate</button>`;return;}
+
+if(scene.type==='epilogue'){renderEpilogue();return;}
+
+if(scene.type==='ips'){
+container.innerHTML=`<h2 class="text-2xl font-bold text-white mb-4">[${scene.title}]</h2><div class="dialogue-box text-slate-300 leading-relaxed whitespace-pre-line">${scene.narrative}</div>`;
+actionContainer.innerHTML=`<button onclick="nextScene()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded transition">✅ Acknowledge & Proceed</button>`;return;}
+
+if(scene.type==='dialog'){
+let theoryBtn = scene.theoryKey ? `<button onclick="openTheoryNote('${scene.theoryKey}')" class="w-full mb-4 bg-slate-800 hover:bg-slate-700 border border-blue-500/50 text-blue-400 font-bold py-3 px-6 rounded transition flex items-center justify-center gap-2"> 📚 View Formal Theory Citation</button>` : '';
+container.innerHTML=`<h2 class="text-2xl font-bold text-white mb-4">[${scene.title}]</h2>
+<div class="avatar-header">
+<div class="avatar-img" style="background-color: ${scene.avatar};">${scene.speaker.charAt(0)}</div>
+<div class="avatar-name">${scene.speaker}</div>
+</div>
+<div class="dialogue-box text-slate-300 leading-relaxed whitespace-pre-line">${scene.narrative}</div>`;
+actionContainer.innerHTML=`${theoryBtn}<button onclick="nextScene()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded transition">Continue</button>`;return;}
+
+if(scene.type==='event'){
+if(!state.activeEventQuarters.includes(scene.quarter)){nextScene();return;}
+const ev=SYS_EVENTS[scene.quarter];
+container.innerHTML=`<h2 class="text-2xl font-bold text-amber-400 mb-2">⚡ Market Event: ${ev.title}</h2>
+<div class="dialogue-box text-slate-300 leading-relaxed whitespace-pre-line" style="border-left-color:#f59e0b;">${ev.narrative}</div>
+<div class="text-sm text-slate-400 mt-4">This is a systemic event — it shapes the "market weather" for the coming quarter, whatever you do with your allocation.</div>`;
+let html='<div class="grid gap-3">';
+ev.choices.forEach((ch,i)=>{html+=`<button onclick="handleSysEvent(${scene.quarter},${i})" class="text-left bg-slate-800 hover:bg-slate-700 border border-amber-500/40 hover:border-amber-400 text-slate-200 font-medium py-4 px-6 rounded transition">${ch.label}</button>`;});
+html+='</div>';
+actionContainer.innerHTML=html;return;}
+
+if(scene.type==='alloc'){
+state.quarter=scene.quarter;
+container.innerHTML=`<h2 class="text-2xl font-bold text-white mb-2">[${scene.title}]</h2>
+<div class="text-slate-300 leading-relaxed mb-4">${scene.narrative}</div>
+<button onclick="openTheoryNote('${scene.theoryKey}')" class="w-full mb-4 bg-slate-800 hover:bg-slate-700 border border-blue-500/50 text-blue-400 font-bold py-3 px-6 rounded transition flex items-center justify-center gap-2"> 📚 View Theory Briefing & Constraints</button>
+<div id="riskDash" class="mb-4"></div>
+<div class="text-sm text-slate-400 mb-2">Adjust weights (Must sum to 100%. Value/Small tilts ≤ 15%):</div>`;
+let html='<div class="space-y-3">';
+KEYS.forEach(k=>{html+=`<div class="flex items-center gap-3"><span class="w-36 text-sm">${ASSETS[k].emoji} ${ASSETS[k].name}</span>
+<input type="range" min="0" max="100" step="5" data-k="${k}" value="${state.alloc[k]}" class="flex-grow accent-blue-500" oninput="updateAlloc(this)">
+<span class="w-12 text-right mono text-sm" id="v_${k}">${state.alloc[k]}%</span></div>`;});
+html+=`<div id="allocSum" class="text-sm font-bold mt-4 text-slate-400">Sum: 100%</div>
+<button onclick="confirmAlloc()" class="w-full mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-6 rounded transition">✅ Confirm Allocation</button></div>`;
+actionContainer.innerHTML=html;updateAllocSum();updateRiskDashboard();return;}
+
+if(scene.type==='sim'){
+state.quarter=scene.quarter;
+const ret=calcReturn(scene.quarter);
+const benchRet=calcReturn(scene.quarter,BENCH);
+const alpha=ret-benchRet;
+state.capital*=(1+ret/100);
+state.benchmarkCapital*=(1+benchRet/100);
+state.reputation=Math.max(0,Math.min(100,state.reputation+(alpha>=0?2:-2)));
+container.innerHTML=`<h2 class="text-2xl font-bold text-white mb-2">[${scene.title}]</h2>
+<div class="text-slate-300 leading-relaxed mb-4">${scene.narrative}</div>
+<div class="p-4 bg-slate-800 rounded border border-slate-700">
+<p class="text-sm text-slate-400 mb-2">Your Portfolio:</p>
+<p class="text-xl font-bold ${ret>=0?'text-green-400':'text-red-400'}">${ret>=0?'+':''}${ret.toFixed(2)}%</p>
+<p class="text-sm text-slate-400 mt-3 mb-1">Benchmark (60/20/10/10):</p>
+<p class="text-sm font-bold text-slate-300">${benchRet>=0?'+':''}${benchRet.toFixed(2)}%</p>
+<p class="text-sm mt-2 pt-2 border-t border-slate-700">Alpha vs. benchmark: <span class="font-bold ${alpha>=0?'text-green-400':'text-red-400'}">${alpha>=0?'+':''}${alpha.toFixed(2)}%</span></p>
+<p class="text-sm text-slate-400 mt-2">Capital: £${state.capital.toLocaleString(undefined,{maximumFractionDigits:0})}</p></div>`;
+actionContainer.innerHTML=`<button onclick="nextScene()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded transition">Proceed</button>`;return;}
+
+if(scene.type==='email'){
+renderEmail(scene);
+return;
+}
+
+if(scene.type==='quiz'){
+container.innerHTML=`<h2 class="text-2xl font-bold text-white mb-4">[${scene.title}]</h2>
+<div class="avatar-header">
+<div class="avatar-img" style="background-color: ${scene.avatar};">${scene.speaker.charAt(0)}</div>
+<div class="avatar-name">${scene.speaker}</div>
+</div>
+<div class="dialogue-box text-slate-300 leading-relaxed whitespace-pre-line">${scene.narrative}</div>`;
+renderOptions(scene);
+return;
+}
+}
+
+function renderEmail(scene) {
+    const toAddr = state.playerEmail || 'intern@ipmcapital.com';
+    let attachmentHtml = '';
+    if (scene.attachment) {
+        const att = ATTACHMENTS[scene.attachment];
+        attachmentHtml = `
+            <div class="attachment-box" onclick="openAttachment('${scene.attachment}')">
+                <span class="att-icon">📎</span>
+                <span class="att-name">${att.filename}</span>
+                <span class="att-size">(${att.size})</span>
+            </div>
+        `;
+    }
+    
+    const container = document.getElementById('scene-container');
+    container.innerHTML = `
+        <h2 class="text-2xl font-bold text-white mb-4">[${scene.title}]</h2>
+        <div class="avatar-header">
+            <div class="avatar-img" style="background-color: ${scene.avatar};">${scene.speaker.charAt(0)}</div>
+            <div class="avatar-name">${scene.speaker}</div>
+        </div>
+        <div class="email-frame">
+            <div class="email-header">
+                <div><span class="label">From:</span> <span class="value">${scene.from}</span></div>
+                <div><span class="label">To:</span> <span class="value">${toAddr}</span></div>
+                <div><span class="label">Subject:</span> <span class="value font-semibold">${scene.subject}</span></div>
+            </div>
+            <div class="email-body">
+                <div class="whitespace-pre-line mb-4">${scene.narrative}</div>
+                ${attachmentHtml}
+                ${scene.question ? `<p class="mt-4 font-semibold text-white">${scene.question}</p>` : ''}
+            </div>
+        </div>
+    `;
+    renderOptions(scene);
+}
+
+function renderOptions(scene) {
+    const actionContainer = document.getElementById('action-container');
+    let btns = '<div class="grid gap-3">';
+    scene.options.forEach((o, i) => {
+        btns += `<button onclick="handleSelect(${i})" class="text-left bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-blue-500 text-slate-200 font-medium py-4 px-6 rounded transition flex items-start gap-3">
+            <span class="bg-slate-700 text-xs font-bold px-2 py-1 rounded mt-0.5">${String.fromCharCode(65 + i)}</span>
+            <span>${o.text}</span>
+        </button>`;
+    });
+    btns += `</div><div id="quiz-feedback" class="mt-4 hidden p-4 rounded bg-slate-800 border border-slate-600"></div>
+    <button id="next-btn" onclick="nextScene()" class="hidden w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded transition">Proceed</button>`;
+    actionContainer.innerHTML = btns;
+}
+
+function startGame(){
+const name=document.getElementById('studentNameInput').value.trim();
+if(!name){alert("Please enter your name.");return;}
+state.studentName=name;
+state.playerEmail=name.toLowerCase().replace(/\s+/g,'.')+'@ipmcapital.com';
+// Randomize replayability: pick 2 of the 4 quarters to carry a systemic market event, and randomize the situational-event trigger thresholds
+const pool=[1,2,3,4];for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+state.activeEventQuarters=pool.slice(0,2);
+const rand=(min,max)=>Math.round((min+Math.random()*(max-min))*10)/10;
+state.sitThresholds={closetTilt:rand(4,10),marginBeta:rand(1.2,1.4),marginCapital:Math.round(rand(8.5,9.5)*1000000)};
+nextScene();}
+
+function openTheoryNote(k){const n=TN[k];document.getElementById('modal-title').innerText=n.title;document.getElementById('modal-text').innerHTML=n.text;document.getElementById('theory-modal').classList.add('active');}
+function closeModal(){document.getElementById('theory-modal').classList.remove('active');}
+function updateAlloc(el){state.alloc[el.dataset.k]=parseInt(el.value);document.getElementById('v_'+el.dataset.k).innerText=el.value+'%';updateAllocSum();updateRiskDashboard();}
+function computeRisk(){
+const beta=KEYS.reduce((s,k)=>s+(state.alloc[k]/100)*AP[k].beta,0);
+const activeShare=KEYS.reduce((s,k)=>s+Math.abs(state.alloc[k]-BENCH[k]),0)/2;
+const teProxy=activeShare*0.3;
+return {beta,activeShare,teProxy,valTilt:state.alloc.val,smallTilt:state.alloc.small};}
+function riskBadge(ok,warnTxt,okTxt){return ok?`<span class="text-green-400">${okTxt}</span>`:`<span class="text-red-400">${warnTxt}</span>`;}
+function updateRiskDashboard(){
+const el=document.getElementById('riskDash');if(!el)return;
+const r=computeRisk();
+const betaWarn=r.beta>1.3;
+const closetWarn=(r.valTilt+r.smallTilt)<=10;
+const tiltWarn=r.valTilt>15||r.smallTilt>15;
+el.innerHTML=`<div class="p-4 bg-slate-900/60 border border-slate-700 rounded-lg">
+<div class="text-xs uppercase tracking-wide text-slate-500 mb-3 font-bold">📊 Live Risk Dashboard</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+<div><div class="text-slate-500 text-xs">Portfolio Beta</div><div class="mono font-bold ${betaWarn?'text-red-400':'text-blue-300'}">${r.beta.toFixed(2)}</div></div>
+<div><div class="text-slate-500 text-xs">Active Share (proxy)</div><div class="mono font-bold ${closetWarn?'text-amber-400':'text-blue-300'}">${r.activeShare.toFixed(0)}%</div></div>
+<div><div class="text-slate-500 text-xs">Tracking Error (proxy)</div><div class="mono font-bold text-blue-300">${r.teProxy.toFixed(1)}%</div></div>
+<div><div class="text-slate-500 text-xs">Factor Tilts (Val/Small)</div><div class="mono font-bold ${tiltWarn?'text-red-400':'text-blue-300'}">${r.valTilt}% / ${r.smallTilt}%</div></div>
+</div>
+<div class="text-xs text-slate-500 mt-3 space-y-1">
+${betaWarn?'<div class="text-red-400">⚠ Beta above 1.3 — elevated systematic risk, watch for margin calls.</div>':''}
+${closetWarn?'<div class="text-amber-400">⚠ Very low active tilts — risk of "closet indexing" (charging active fees, running a near-benchmark book).</div>':''}
+${tiltWarn?'<div class="text-red-400">⚠ A factor tilt exceeds the ±15% compliance limit.</div>':''}
+${!betaWarn&&!closetWarn&&!tiltWarn?'<div class="text-slate-500">All metrics within a reasonable active-management range.</div>':''}
+</div>
+<div class="text-[10px] text-slate-600 mt-2 italic">Illustrative approximations vs. a simple benchmark, for teaching purposes only — not the exact FN3204 formulas.</div>
+</div>`;}
+function updateAllocSum(){const s=KEYS.reduce((a,k)=>a+state.alloc[k],0);const el=document.getElementById('allocSum');el.innerText=`Sum: ${s}% ${s===100?'✅':'️ Must be 100%'}`;el.className=`text-sm font-bold mt-4 ${s===100?'text-green-400':'text-red-400'}`;}
+function confirmAlloc(){
+const s=KEYS.reduce((a,k)=>a+state.alloc[k],0);if(s!==100){alert("Weights must sum to exactly 100%.");return;}
+if(state.alloc.val>15||state.alloc.small>15){alert("Compliance Block: Factor tilts cannot exceed 15%.");return;}
+if((state.alloc.tb+state.alloc.bond)<10){alert("IPS Breach: The pension mandate requires at least 10% held in Cash (T-Bills) and/or Government Bonds as a liquidity buffer for payouts.");return;}
+const scene=scenes[state.sceneIndex];
+const trig=checkSituational(scene.quarter);
+if(trig){renderSituationalEvent(trig);return;}
+nextScene();}
+
+function handleSysEvent(q,idx){
+const ev=SYS_EVENTS[q];const scenCopy=Object.assign({},SCEN[q]);ev.choices[idx].apply(scenCopy);state.eventScen[q]=scenCopy;nextScene();}
+
+function checkSituational(q){
+if(q>=2 && !state.triggeredSituational.closet){
+    const tiltActivity=state.alloc.val+state.alloc.small;
+    if(tiltActivity<=state.sitThresholds.closetTilt){state.triggeredSituational.closet=true;return 'closet';}
+}
+if(q>=2 && !state.triggeredSituational.margin){
+    const beta=(state.alloc.mkt+state.alloc.val+state.alloc.small)/100 + (state.alloc.feq+state.alloc.feqh)/100*0.7;
+    if(beta>state.sitThresholds.marginBeta && state.capital<state.sitThresholds.marginCapital){state.triggeredSituational.margin=true;return 'margin';}
+}
+return null;}
+
+function renderSituationalEvent(id){
+const ev=SIT_EVENTS[id];
+const c=document.getElementById('scene-container');const a=document.getElementById('action-container');
+c.innerHTML=`<h2 class="text-2xl font-bold text-red-400 mb-2">⚡ ${ev.title}</h2>
+<div class="dialogue-box text-slate-300 leading-relaxed whitespace-pre-line" style="border-left-color:#ef4444;">${ev.narrative}</div>`;
+let html='<div class="grid gap-3">';
+ev.choices.forEach((ch,i)=>{html+=`<button onclick="resolveSituational('${id}',${i})" class="text-left bg-slate-800 hover:bg-slate-700 border border-red-500/40 hover:border-red-400 text-slate-200 font-medium py-4 px-6 rounded transition">${ch.label}</button>`;});
+html+='</div>';
+a.innerHTML=html;}
+
+function resolveSituational(id,idx){SIT_EVENTS[id].choices[idx].apply();nextScene();}
+
+function calcReturn(q,allocObj){allocObj=allocObj||state.alloc;let r=0;const sc=state.eventScen[q]||SCEN[q];for(let k in allocObj){const w=allocObj[k]/100;const a=AP[k];let ret=a.dur>0?a.cou-a.dur*sc.dy:sc.rfq+a.beta*sc.mkt+a.s*sc.smb+a.h*sc.hml+a.fx*sc.fx+(a.fp?sc.fp:0);r+=w*ret;}return r;}
+
+function handleSelect(i){
+const scene=scenes[state.sceneIndex];const sel=scene.options[i];
+const fb=document.getElementById('quiz-feedback');const nb=document.getElementById('next-btn');
+document.querySelectorAll('#action-container button:not(#next-btn)').forEach(b=>{b.disabled=true;b.classList.add('opacity-50','cursor-not-allowed');});
+fb.classList.remove('hidden');
+if(sel.correct){state.correctCount++;fb.className="mt-4 p-4 rounded bg-green-900/30 border border-green-500 text-green-300 fade-in";fb.innerHTML=`<strong class="text-green-400">✓ Correct.</strong> ${sel.feedback}`;}
+else{fb.className="mt-4 p-4 rounded bg-red-900/30 border border-red-500 text-red-300 fade-in";fb.innerHTML=`<strong class="text-red-400">✗ Incorrect.</strong> ${sel.feedback}`;}
+const totalQ=scenes.filter(s=>['quiz','email'].includes(s.type)).length;
+document.getElementById('score-display').innerText=Math.round((state.correctCount/totalQ)*100);
+nb.classList.remove('hidden');}
+
+function nextScene(){if(state.sceneIndex<scenes.length-1){state.sceneIndex++;renderScene();}}
+
+function renderChart(id,cfg){
+const ex=Chart.getChart(id);if(ex)ex.destroy();
+const ctx=document.getElementById(id).getContext('2d');const d=[];
+for(let i=0;i<60;i++){const x=(Math.random()-0.5)*20;const rs=Math.sqrt((1-cfg.rSquared)*100);const r=(Math.random()-0.5)*2*rs;const y=(cfg.alphaIsPositive?2:0)+cfg.beta*x+r;d.push({x:parseFloat(x.toFixed(2)),y:parseFloat(y.toFixed(2))});}
+const ld=cfg.alphaIsPositive?[{x:-10,y:-10*cfg.beta+2},{x:10,y:10*cfg.beta+2}]:[{x:-10,y:-10*cfg.beta},{x:10,y:10*cfg.beta}];
+new Chart(ctx,{type:'scatter',data:{datasets:[{label:'Observations',data:d,backgroundColor:cfg.alphaIsPositive?'rgba(91,140,255,0.6)':'rgba(255,193,7,0.6)',pointRadius:3},{label:'SCL',data:ld,type:'line',borderColor:cfg.alphaIsPositive?'#5b8cff':'#ffc107',borderWidth:2,pointRadius:0,fill:false}]},
+options:{responsive:true,maintainAspectRatio:false,scales:{x:{title:{display:true,text:'Market Excess Return',color:'#94a3b8'},grid:{color:'#334155'},ticks:{color:'#94a3b8'}},y:{title:{display:true,text:'Asset Excess Return',color:'#94a3b8'},grid:{color:'#334155'},ticks:{color:'#94a3b8'}}},plugins:{legend:{display:true,labels:{color:'#e8eaf6'}}}}});}
+
+function openAttachment(id) {
+    const att = ATTACHMENTS[id];
+    document.getElementById('att-modal-title').innerHTML = ` <span>${att.filename}</span>`;
+    document.getElementById('attachment-modal').classList.add('active');
+    setTimeout(() => {
+        if (att.isDual) {
+            const body = document.getElementById('att-modal-body');
+            body.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+                <div class="bg-slate-900 p-2 rounded flex flex-col"><p class="text-center text-xs mb-2 text-slate-400">Stock A Regression</p><div class="chart-container flex-grow"><canvas id="modalChartA"></canvas></div></div>
+                <div class="bg-slate-900 p-2 rounded flex flex-col"><p class="text-center text-xs mb-2 text-slate-400">Stock B Regression</p><div class="chart-container flex-grow"><canvas id="modalChartB"></canvas></div></div>
+            </div>`;
+            renderChart('modalChartA', att.configA);
+            renderChart('modalChartB', att.configB);
+        } else {
+            const body = document.getElementById('att-modal-body');
+            body.innerHTML = `<div class="chart-container" style="height: 350px;"><canvas id="modalChart"></canvas></div>`;
+            renderChart('modalChart', att.config);
+        }
+    }, 100);
+}
+
+function closeAttachment() {
+    document.getElementById('attachment-modal').classList.remove('active');
+    ['modalChart', 'modalChartA', 'modalChartB'].forEach(id => {
+        const ex = Chart.getChart(id);
+        if(ex) ex.destroy();
+    });
+}
+
+function renderEpilogue(){
+const totalQ=scenes.filter(s=>['quiz','email'].includes(s.type)).length;
+const fs=Math.round((state.correctCount/totalQ)*100);
+const form=document.createElement('form');form.action=CONFIG.formActionUrl;form.method='POST';form.target='hidden_iframe';form.style.display='none';
+const i1=document.createElement('input');i1.name=CONFIG.entryName;i1.value=state.studentName;form.appendChild(i1);
+const i2=document.createElement('input');i2.name=CONFIG.entryMark;i2.value=fs;form.appendChild(i2);
+document.body.appendChild(form);form.submit();setTimeout(()=>{if(document.body.contains(form))document.body.removeChild(form);},2000);
+const alphaPct=((state.capital/state.benchmarkCapital)-1)*100;
+const rep=Math.round(state.reputation);
+let tone;
+if(fs>=70 && alphaPct>=0 && rep>=55){
+    tone="\"You beat the benchmark, held up under Eleanor's scrutiny, and know the theory cold. Strong work.\"";
+}else if(fs>=55 && rep>=35){
+    tone="\"A solid first internship — a few rough patches with the client and the models, but nothing you can't sharpen up.\"";
+}else{
+    tone="\"It was a bumpy quarter-by-quarter run, and the committee noticed the drawdowns and the compliance flags. There's real room to improve.\"";
+}
+const offerHtml=`<h2>RETURN OFFER</h2><p>${tone}</p><p class="mt-2">"Welcome back next semester — Season 2 of your internship at IPM Capital picks up where this one left off."</p><p class="text-sm text-slate-400 mt-2">— Marcus, Senior PM</p><p class="text-xs text-slate-500 mt-3 italic">to be continued next semester...</p>`;
+const c=document.getElementById('scene-container');const a=document.getElementById('action-container');a.innerHTML='';
+c.innerHTML=`<div class="text-center w-full">
+<h2 class="text-3xl font-bold text-white mb-6">Internship Complete</h2>
+<div class="glass-panel p-6 rounded-xl mb-6 max-w-md mx-auto text-left border border-blue-500/30 shadow-2xl">
+<h3 class="text-xl font-bold text-blue-400 mb-4 border-b border-slate-600 pb-2 flex items-center gap-2"><span>📊</span> Performance Report</h3>
+<div class="space-y-3 text-slate-300">
+<div class="flex justify-between"><span>Intern:</span><span class="font-bold text-white">${state.studentName}</span></div>
+<div class="flex justify-between"><span>Email:</span><span class="mono text-xs text-slate-400">${state.playerEmail}</span></div>
+<div class="flex justify-between"><span>Theory Grade:</span><span class="text-green-400 font-bold text-2xl">${fs}%</span></div>
+<div class="flex justify-between"><span>Capital Growth:</span><span class="${state.capital>=1e7?'text-green-400':'text-red-400'} font-mono">${((state.capital/1e7-1)*100).toFixed(1)}%</span></div>
+<div class="flex justify-between"><span>Cumulative Alpha vs. Benchmark:</span><span class="${alphaPct>=0?'text-green-400':'text-red-400'} font-mono">${alphaPct>=0?'+':''}${alphaPct.toFixed(1)}%</span></div>
+<div class="flex justify-between"><span>Client/Firm Reputation:</span><span class="${rep>=55?'text-green-400':rep>=35?'text-amber-400':'text-red-400'} font-mono">${rep}/100</span></div>
+<div class="flex justify-between"><span>Correct:</span><span class="font-mono">${state.correctCount}/${totalQ}</span></div>
+<div class="mt-4 pt-4 border-t border-slate-600"><p class="text-sm text-slate-400">📩 Grade auto-submitted. Return offer confirmed — see you in Season 2.</p></div>
+</div></div>
+<button id="reveal-offer-btn" onclick="revealOffer()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-full transition transform hover:scale-105 shadow-lg shadow-blue-500/30 flex items-center gap-2 mx-auto"><span>📩</span> Open Final Evaluation</button>
+<button onclick="showCredits()" class="mt-4 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 px-8 rounded-full transition flex items-center gap-2 mx-auto"><span>📜</span> Credits & Sources</button>
+<div id="offer-document" class="hidden falling-document">${offerHtml}</div></div>`;}
+
+function showCredits() {
+    document.getElementById('modal-title').innerText = 'Credits & Sources';
+    document.getElementById('modal-text').innerHTML = `
+        <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mb-4">
+            <p class="text-sm"><b>Project created by:</b> Arina Usova, Group 3</p>
+            <p class="text-sm mt-1"><b>In cooperation with:</b> Qwen</p>
+        </div>
+        <h4 class="text-sm font-bold text-slate-400 mb-2">Academic References</h4>
+        <ul class="text-xs space-y-2 list-disc pl-4">
+            <li>FN3204 Subject Guide, ICEF / University of London: Ch.2 MPT & CAPM; Ch.3–4 multifactor models; Ch.5 market efficiency; Ch.8 fixed income; Ch.9 performance evaluation.</li>
+            <li>Bodie, Z., Kane, A., Marcus, A.J., <i>Investments</i>, 13th international edition (McGraw-Hill, 2023).</li>
+            <li>Fama, E.F. & French, K.R. (1993). Common risk factors in the returns on stocks and bonds. <i>Journal of Financial Economics</i>, 33(1), 3–56.</li>
+            <li>Roll, R. (1977). A critique of the asset pricing theory's tests Part I. <i>Journal of Financial Economics</i>, 4(2), 129-176.</li>
+        </ul>
+        <p class="text-xs text-slate-500 mt-4 italic">This is an educational simulation for FN3204, not investment advice.</p>
+    `;
+    document.getElementById('theory-modal').classList.add('active');
+}
+
+function revealOffer(){const b=document.getElementById('reveal-offer-btn');const d=document.getElementById('offer-document');if(b){b.style.opacity='0';b.style.pointerEvents='none';setTimeout(()=>b.style.display='none',300);}if(d)d.classList.remove('hidden');}
+
+window.onload=()=>{renderScene();};
+</script>
+</body>
+</html>
