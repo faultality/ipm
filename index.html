@@ -755,7 +755,7 @@ c.innerHTML=`<div class="text-center w-full">
 <div class="flex justify-between"><span>Cumulative Alpha vs. Benchmark:</span><span class="${alphaPct>=0?'text-green-400':'text-red-400'} font-mono">${alphaPct>=0?'+':''}${alphaPct.toFixed(1)}%</span></div>
 <div class="flex justify-between"><span>Client/Firm Reputation:</span><span class="${rep>=55?'text-green-400':rep>=35?'text-amber-400':'text-red-400'} font-mono">${rep}/100</span></div>
 <div class="flex justify-between"><span>Correct:</span><span class="font-mono">${state.correctCount}/${totalQ}</span></div>
-<div class="mt-4 pt-4 border-t border-slate-600"><p class="text-sm text-slate-400">📩 Grade auto-submitted. Return offer confirmed — see you in Season 2.</p></div>
+<div class="mt-4 pt-4 border-t border-slate-600"><p class="text-sm text-slate-400">📩 Grade auto-submitted.</p></div>
 </div></div>
 <button id="reveal-offer-btn" onclick="revealOffer()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-full transition transform hover:scale-105 shadow-lg shadow-blue-500/30 flex items-center gap-2 mx-auto"><span>📩</span> Open Final Evaluation</button>
 <button onclick="showCredits()" class="mt-4 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 px-8 rounded-full transition flex items-center gap-2 mx-auto"><span>📜</span> Credits & Sources</button>
@@ -766,7 +766,7 @@ function showCredits() {
     document.getElementById('modal-text').innerHTML = `
         <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mb-4">
             <p class="text-sm"><b>Project created by:</b> Arina Usova, Group 3</p>
-            <p class="text-sm mt-1"><b>In cooperation with:</b> Qwen</p>
+            <p class="text-sm mt-1"><b>In cooperation with:</b> Qwen AI and Claude AI</p>
         </div>
         <h4 class="text-sm font-bold text-slate-400 mb-2">Academic References</h4>
         <ul class="text-xs space-y-2 list-disc pl-4">
